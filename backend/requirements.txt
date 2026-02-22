@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pymongo
+python-dotenv
+requests
+passlib
+python-multipart
+docx
+PyPDF2
+cloudinary

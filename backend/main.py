@@ -1,0 +1,332 @@
+from fastapi import FastAPI, Form, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+from admin import admin_collection, create_default_admin
+from db import (
+    resume_collection,
+    certificate_collection,
+    projects_collection,
+    summary_collection,
+    contact_collection
+)
+from passlib.hash import bcrypt
+from bson import ObjectId
+from dotenv import load_dotenv
+from datetime import datetime
+import os
+import docx
+import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import cloudinary
+import cloudinary.uploader
+
+# ==========================
+# Load Environment Variables
+# ==========================
+load_dotenv()
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+EMAIL_USER = os.getenv("EMAIL_USER")
+EMAIL_PASS = os.getenv("EMAIL_PASS")
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+
+# ==========================
+# Cloudinary Configuration
+# ==========================
+cloudinary.config(
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET
+)
+
+# ==========================
+# Create Default Admin
+# ==========================
+create_default_admin()
+
+app = FastAPI()
+
+# ==========================
+# CORS
+# ==========================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+# ==========================================================
+# 🔐 ADMIN LOGIN
+# ==========================================================
+@app.post("/admin/login")
+def login(username: str = Form(...), password: str = Form(...)):
+    admin = admin_collection.find_one({"username": username})
+    if not admin or not bcrypt.verify(password, admin["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return {"success": True}
+
+# ==========================================================
+# 📄 UPLOAD RESUME
+# ==========================================================
+@app.post("/admin/upload_resume")
+async def upload_resume(file: UploadFile = File(...)):
+    if not (file.filename.endswith(".pdf") or file.filename.endswith(".docx")):
+        raise HTTPException(status_code=400, detail="Only PDF or DOCX allowed")
+
+    # Upload to Cloudinary
+    result = cloudinary.uploader.upload_large(
+        file.file,
+        resource_type="auto",
+        folder="portfolio/resumes",
+        public_id=os.path.splitext(file.filename)[0]
+    )
+
+    # Remove old resume record and store new one
+    resume_collection.delete_many({})
+    resume_collection.insert_one({
+        "filename": file.filename,
+        "file_url": result["secure_url"]
+    })
+
+    return {"message": "Resume uploaded successfully", "file_url": result["secure_url"]}
+
+# ==========================================================
+# 📑 UPLOAD SUMMARY
+# ==========================================================
+@app.post("/admin/upload_summary")
+async def upload_summary(file: UploadFile = File(...)):
+    if file.filename.endswith(".pdf") or file.filename.endswith(".docx"):
+        if file.filename.endswith(".pdf"):
+            import PyPDF2
+            reader = PyPDF2.PdfReader(file.file)
+            content = "\n".join([page.extract_text() or "" for page in reader.pages])
+        else:
+            doc = docx.Document(file.file)
+            content = "\n".join([para.text for para in doc.paragraphs])
+    elif file.filename.endswith(".txt"):
+        content = (await file.read()).decode("utf-8")
+    else:
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX or TXT allowed")
+
+    summary_collection.delete_many({})
+    summary_collection.insert_one({
+        "filename": file.filename,
+        "content": content
+    })
+
+    return {"message": "Summary uploaded successfully"}
+
+# ==========================================================
+# 🏆 CERTIFICATES
+# ==========================================================
+@app.post("/admin/upload_certificate")
+async def upload_certificate(
+    title: str = Form(...),
+    description: str = Form(...),
+    file: UploadFile = File(...)
+):
+    # Upload to Cloudinary
+    result = cloudinary.uploader.upload_large(
+        file.file,
+        resource_type="auto",
+        folder="portfolio/certificates",
+        public_id=os.path.splitext(file.filename)[0]
+    )
+
+    certificate_collection.insert_one({
+        "title": title,
+        "description": description,
+        "file_url": result["secure_url"]
+    })
+
+    return {"message": "Certificate uploaded successfully", "file_url": result["secure_url"]}
+
+@app.get("/certificates")
+def get_certificates():
+    certs = list(certificate_collection.find())
+    return [
+        {
+            "id": str(c["_id"]),
+            "title": c.get("title"),
+            "description": c.get("description"),
+            "file_url": c.get("file_url")
+        }
+        for c in certs
+    ]
+
+# ==========================================================
+# 🚀 PROJECTS
+# ==========================================================
+@app.post("/admin/add_project")
+async def add_project(
+    title: str = Form(...),
+    description: str = Form(...),
+    tech_stack: str = Form(""),
+    github_link: str = Form(""),
+    live_link: str = Form(""),
+    screenshot: UploadFile = File(None)
+):
+    image_url = None
+    if screenshot:
+        result = cloudinary.uploader.upload_large(
+            screenshot.file,
+            resource_type="auto",
+            folder="portfolio/projects",
+            public_id=os.path.splitext(screenshot.filename)[0]
+        )
+        image_url = result["secure_url"]
+
+    projects_collection.insert_one({
+        "title": title,
+        "description": description,
+        "tech_stack": tech_stack,
+        "github_link": github_link,
+        "live_link": live_link,
+        "image_url": image_url
+    })
+
+    return {"message": "Project added successfully", "image_url": image_url}
+
+@app.get("/projects")
+def get_projects():
+    projects = list(projects_collection.find())
+    return [
+        {
+            "id": str(p["_id"]),
+            "title": p.get("title"),
+            "description": p.get("description"),
+            "tech_stack": p.get("tech_stack"),
+            "github_link": p.get("github_link"),
+            "live_link": p.get("live_link"),
+            "image_url": p.get("image_url")
+        }
+        for p in projects
+    ]
+
+@app.delete("/admin/delete_project/{project_id}")
+def delete_project(project_id: str):
+    projects_collection.delete_one({"_id": ObjectId(project_id)})
+    return {"message": "Project deleted successfully"}
+
+# ==========================================================
+# 📬 CONTACT FORM
+# ==========================================================
+class ContactRequest(BaseModel):
+    name: str
+    email: EmailStr
+    subject: str | None = ""
+    message: str
+
+@app.post("/contact")
+def contact(data: ContactRequest):
+    if not EMAIL_USER or not EMAIL_PASS:
+        raise HTTPException(status_code=500, detail="Email credentials not configured")
+
+    contact_collection.insert_one({
+        "name": data.name,
+        "email": data.email,
+        "subject": data.subject,
+        "message": data.message,
+        "created_at": datetime.utcnow()
+    })
+
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_USER
+    msg["To"] = EMAIL_USER
+    msg["Subject"] = data.subject or "New Portfolio Contact Message"
+
+    body = f"""
+New message from portfolio:
+
+Name: {data.name}
+Email: {data.email}
+Subject: {data.subject}
+
+Message:
+{data.message}
+"""
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_USER, EMAIL_PASS)
+            server.send_message(msg)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"message": "Message sent successfully"}
+
+# ==========================================================
+# 📬 GET CONTACTS
+# ==========================================================
+@app.get("/admin/contacts")
+def get_contacts():
+    contacts = list(contact_collection.find().sort("created_at", -1))
+    return [
+        {
+            "id": str(c["_id"]),
+            "name": c.get("name"),
+            "email": c.get("email"),
+            "subject": c.get("subject"),
+            "message": c.get("message"),
+            "created_at": c.get("created_at").isoformat() if c.get("created_at") else None
+        }
+        for c in contacts
+    ]
+
+# ==========================================================
+# 🤖 AI CHAT
+# ==========================================================
+class ChatRequest(BaseModel):
+    question: str
+
+@app.post("/chat")
+async def chat(data: ChatRequest):
+    user_question = data.question.strip().lower()
+
+    greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"]
+    if user_question in greetings:
+        return {"answer": f"{data.question}! I'm Harsh's AI assistant. How can I help you with his skills or projects?"}
+
+    resume = resume_collection.find_one(sort=[("_id", -1)])
+    summary = summary_collection.find_one(sort=[("_id", -1)])
+
+    prompt = f"""
+You are Harsh's professional AI assistant.
+Answer ONLY using the information below.
+If answer not found say:
+"I'm not sure about that, but I can help with questions related to Harsh's skills, experience, or projects."
+
+RESUME:
+{resume.get('content','') if resume else ''}
+
+SUMMARY:
+{summary.get('content','') if summary else ''}
+
+User Question:
+{data.question}
+"""
+
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "meta-llama/llama-3-8b-instruct",
+            "messages": [{"role": "user", "content": prompt}]
+        }
+    )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="AI API Error")
+
+    answer = response.json()["choices"][0]["message"]["content"]
+    return {"answer": answer}
