@@ -53,16 +53,22 @@ app = FastAPI()
 # ==========================
 # CORS
 # ==========================
+# ==========================
+# CORS (Production Ready)
+# ==========================
 origins = ["http://localhost:5173"]
-if FRONTEND_URL:
-    origins.append(FRONTEND_URL)
+
+allowed_origins = os.getenv("ALLOWED_ORIGINS")
+
+if allowed_origins:
+    origins.extend([origin.strip() for origin in allowed_origins.split(",")])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 # ==========================================================
