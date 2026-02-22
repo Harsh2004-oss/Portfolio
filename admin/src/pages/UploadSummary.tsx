@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { api } from "../api";
 
 const UploadSummary: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -9,12 +10,8 @@ const UploadSummary: React.FC = () => {
     const formData = new FormData();
     formData.append("file", file);
 
-    await fetch("http://127.0.0.1:8000/upload-summary", {
-      method: "POST",
-      body: formData,
-    });
-
-    alert("Summary uploaded successfully!");
+    const res = await api.post("/upload-summary", formData);
+    alert(res.data.message || "Summary uploaded successfully!");
   };
 
   return (

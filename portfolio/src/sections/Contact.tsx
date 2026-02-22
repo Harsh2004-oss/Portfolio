@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FaLinkedin, FaGithub, FaEnvelope } from "react-icons/fa";
-// Custom CSS file
+import { api } from "../api";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -25,13 +25,8 @@ const Contact = () => {
     setResponseMsg("");
 
     try {
-      const res = await fetch("http://localhost:8000/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
+      const res = await api.post("/contact", formData);
+      if (res.status === 200 || res.status === 201) {
         setResponseMsg("✅ Message sent successfully!");
         setFormData({ name: "", email: "", subject: "", message: "" });
       } else {

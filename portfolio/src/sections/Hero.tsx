@@ -1,26 +1,24 @@
 import profileImg from "../assets/Harsh_profile.jpeg";
-
-const BACKEND_URL = "http://127.0.0.1:8000";
+import { api } from "../api";
 
 const Hero = () => {
   // Open resume PDF in a new browser tab
   const handleViewResume = () => {
-    window.open(`${BACKEND_URL}/resume/view`, "_blank"); // Opens PDF in browser
+    window.open(`${api.defaults.baseURL}/resume/view`, "_blank");
   };
 
   // Download resume PDF
   const handleDownloadResume = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/resume/download`);
+      const response = await fetch(`${api.defaults.baseURL}/resume/download`);
       if (!response.ok) throw new Error("Failed to fetch resume PDF");
 
-      const blob = await response.blob(); // get file as blob
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
       link.href = url;
 
-      // Extract filename from content-disposition header if available
       const disposition = response.headers.get("Content-Disposition");
       let filename = "Harsh_Aerndolkar_Resume.pdf";
       if (disposition && disposition.includes("filename=")) {

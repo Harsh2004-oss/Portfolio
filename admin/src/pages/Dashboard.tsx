@@ -3,6 +3,7 @@ import UploadResume from "./UploadResume";
 import UploadCertificate from "./UploadCertificate";
 import AddProject from "./AddProject";
 import UploadSummary from "./UploadSummary";
+import { api } from "../api";
 
 interface Contact {
   _id: string;
@@ -17,11 +18,10 @@ const Dashboard: React.FC = () => {
   const [page, setPage] = useState<"resume" | "certificate" | "project" | "summary" | "contacts">("resume");
   const [contacts, setContacts] = useState<Contact[]>([]);
 
-  // Fetch contacts from backend
   useEffect(() => {
-   fetch("http://localhost:8000/admin/contacts")// instead of /api/contacts
-      .then((res) => res.json())
-      .then((data) => setContacts(data))
+    api
+      .get("/admin/contacts")
+      .then((res) => setContacts(res.data))
       .catch((err) => console.error("Failed to fetch contacts:", err));
   }, []);
 
@@ -34,7 +34,7 @@ const Dashboard: React.FC = () => {
         <button onClick={() => setPage("summary")}>Upload Summary</button>
         <button onClick={() => setPage("certificate")}>Upload Certificate</button>
         <button onClick={() => setPage("project")}>Add Project</button>
-        <button onClick={() => setPage("contacts")}>View Contacts</button> {/* ✅ New button */}
+        <button onClick={() => setPage("contacts")}>View Contacts</button>
       </div>
 
       <div style={styles.content}>
@@ -92,7 +92,7 @@ const styles = {
     display: "flex",
     gap: "15px",
     marginBottom: "30px",
-    flexWrap: "wrap",
+    flexWrap: "wrap" as const,
   },
   content: {
     background: "#1a1a22",
@@ -102,15 +102,6 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse" as const,
-  },
-  th: {
-    borderBottom: "1px solid #444",
-    padding: "10px",
-    textAlign: "left" as const,
-  },
-  td: {
-    borderBottom: "1px solid #333",
-    padding: "10px",
   },
 };
 

@@ -32,6 +32,7 @@ EMAIL_PASS = os.getenv("EMAIL_PASS")
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 # ==========================
 # Cloudinary Configuration
@@ -52,9 +53,13 @@ app = FastAPI()
 # ==========================
 # CORS
 # ==========================
+origins = ["http://localhost:5173"]
+if FRONTEND_URL:
+    origins.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -78,7 +83,6 @@ async def upload_resume(file: UploadFile = File(...)):
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".docx")):
         raise HTTPException(status_code=400, detail="Only PDF or DOCX allowed")
 
-    # Upload to Cloudinary
     result = cloudinary.uploader.upload_large(
         file.file,
         resource_type="auto",
@@ -86,7 +90,6 @@ async def upload_resume(file: UploadFile = File(...)):
         public_id=os.path.splitext(file.filename)[0]
     )
 
-    # Remove old resume record and store new one
     resume_collection.delete_many({})
     resume_collection.insert_one({
         "filename": file.filename,
@@ -130,7 +133,6 @@ async def upload_certificate(
     description: str = Form(...),
     file: UploadFile = File(...)
 ):
-    # Upload to Cloudinary
     result = cloudinary.uploader.upload_large(
         file.file,
         resource_type="auto",

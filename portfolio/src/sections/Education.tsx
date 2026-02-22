@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
-const BACKEND_URL = "http://127.0.0.1:8000";
-
 const educationData = [
     {
         icon: "🎓",
@@ -69,7 +67,7 @@ const Education = () => {
                         ) : certs.length > 0 ? (
                             certs.map((cert, i) => (
                                 <a
-                                    href={`${BACKEND_URL}/${cert.file_url}`}
+                                    href={`${api.defaults.baseURL}/${cert.file_url}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     key={i}
@@ -86,7 +84,6 @@ const Education = () => {
                                 </a>
                             ))
                         ) : (
-                            /* Fallback static data if backend is not available */
                             <>
                                 <div className="cert-card">
                                     <div className="cert-icon">☁️</div>

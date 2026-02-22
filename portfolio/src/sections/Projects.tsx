@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { api } from "../api";
 
 interface Project {
     id: string;
@@ -15,10 +16,9 @@ const Projects = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("http://127.0.0.1:8000/projects")
-            .then((res) => res.json())
-            .then((data) => {
-                setProjects(data);
+        api.get("/projects")
+            .then((res) => {
+                setProjects(res.data);
                 setLoading(false);
             })
             .catch((err) => {
@@ -53,17 +53,17 @@ const Projects = () => {
                 <div className="projects-grid">
                     {projects.map((project) => (
                         <div className="project-card" key={project.id}>
-                            
-                            {/* 🔥 Project Image */}
+
+                            {/* Project Image */}
                             <div className="project-image">
                                 {project.image_url ? (
                                     <img
-                                        src={`http://127.0.0.1:8000${project.image_url}`}
+                                        src={`${api.defaults.baseURL}${project.image_url}`}
                                         alt={project.title}
                                         style={{
                                             width: "100%",
                                             height: "100%",
-                                            objectFit: "cover"
+                                            objectFit: "cover",
                                         }}
                                     />
                                 ) : (
@@ -94,10 +94,7 @@ const Projects = () => {
                                     {project.tech_stack
                                         ?.split(",")
                                         .map((tag) => (
-                                            <span
-                                                className="project-tag"
-                                                key={tag.trim()}
-                                            >
+                                            <span className="project-tag" key={tag.trim()}>
                                                 {tag.trim()}
                                             </span>
                                         ))}

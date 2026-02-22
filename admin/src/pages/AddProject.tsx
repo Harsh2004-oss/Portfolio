@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { api } from "../api";
 
 interface Project {
   id: string;
@@ -16,7 +17,7 @@ const AddProject: React.FC = () => {
     description: "",
     tech_stack: "",
     github_link: "",
-    live_link: ""
+    live_link: "",
   });
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -25,9 +26,8 @@ const AddProject: React.FC = () => {
 
   // Fetch projects
   const fetchProjects = async () => {
-    const res = await fetch("http://127.0.0.1:8000/projects")
-    const data = await res.json();
-    setProjects(data);
+    const res = await api.get("/projects");
+    setProjects(res.data);
   };
 
   useEffect(() => {
@@ -46,7 +46,7 @@ const AddProject: React.FC = () => {
       description: "",
       tech_stack: "",
       github_link: "",
-      live_link: ""
+      live_link: "",
     });
     setScreenshot(null);
     setEditingId(null);
@@ -67,19 +67,10 @@ const AddProject: React.FC = () => {
     }
 
     if (editingId) {
-      await fetch(
-        `http://127.0.0.1:8000/admin/update_project/${editingId}`,
-        {
-          method: "PUT",
-          body: formData
-        }
-      );
+      await api.put(`/admin/update_project/${editingId}`, formData);
       alert("Project Updated!");
     } else {
-      await fetch("http://127.0.0.1:8000/admin/add_project", {
-        method: "POST",
-        body: formData
-      });
+      await api.post("/admin/add_project", formData);
       alert("Project Added!");
     }
 
@@ -93,19 +84,14 @@ const AddProject: React.FC = () => {
       description: project.description,
       tech_stack: project.tech_stack,
       github_link: project.github_link,
-      live_link: project.live_link
+      live_link: project.live_link,
     });
     setEditingId(project.id);
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this project?")) return;
-
-    await fetch(
-      `http://127.0.0.1:8000/admin/delete_project/${id}`,
-      { method: "DELETE" }
-    );
-
+    await api.delete(`/admin/delete_project/${id}`);
     fetchProjects();
   };
 
@@ -181,7 +167,7 @@ const AddProject: React.FC = () => {
 
           {p.image_url && (
             <img
-              src={`http://127.0.0.1:8000/${p.image_url}`}
+              src={`${api.defaults.baseURL}/${p.image_url}`}
               alt={p.title}
               style={{ width: 200, marginBottom: 10 }}
             />
@@ -202,13 +188,13 @@ const styles = {
     display: "flex",
     flexDirection: "column" as const,
     gap: "15px",
-    maxWidth: "500px"
+    maxWidth: "500px",
   },
   projectCard: {
     border: "1px solid #444",
     padding: "15px",
-    marginBottom: "20px"
-  }
+    marginBottom: "20px",
+  },
 };
 
 export default AddProject;
