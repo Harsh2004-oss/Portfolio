@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Form, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
 from admin import admin_collection, create_default_admin
 from db import (
@@ -50,13 +50,15 @@ cloudinary.config(
 # ==========================
 create_default_admin()
 
-app = FastAPI()
+# ==========================
+# FastAPI App
+# ==========================
+app = FastAPI(title="Harsh Portfolio API")
 
 # ==========================
-# CORS (Production Ready)
+# CORS Configuration
 # ==========================
 origins = ["http://localhost:5173"]
-
 allowed_origins = os.getenv("ALLOWED_ORIGINS")
 if allowed_origins:
     origins.extend([origin.strip() for origin in allowed_origins.split(",")])
@@ -69,6 +71,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==========================
+# ROOT ROUTE
+# ==========================
+@app.get("/")
+def root():
+    """Optional: Redirect to frontend or just return API status"""
+    if FRONTEND_URL:
+        return RedirectResponse(url=FRONTEND_URL)
+    return JSONResponse({"message": "Portfolio API is running 🚀"})
+
 # ==========================================================
 # 🔐 ADMIN LOGIN
 # ==========================================================
@@ -80,7 +92,7 @@ def login(username: str = Form(...), password: str = Form(...)):
     return {"success": True}
 
 # ==========================================================
-# 📄 RESUME — Upload, View, Download, Get Content
+# 📄 RESUME — Upload, View, Download
 # ==========================================================
 @app.post("/admin/upload_resume")
 async def upload_resume(file: UploadFile = File(...)):
@@ -105,7 +117,6 @@ async def upload_resume(file: UploadFile = File(...)):
 
 @app.get("/resume")
 def get_resume():
-    """Returns resume metadata and content (used by Resume.tsx)"""
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume:
         raise HTTPException(status_code=404, detail="No resume uploaded yet")
@@ -118,7 +129,6 @@ def get_resume():
 
 @app.get("/resume/view")
 def view_resume():
-    """Redirects browser to the Cloudinary-hosted resume for inline viewing (used by Hero.tsx)"""
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
@@ -127,7 +137,6 @@ def view_resume():
 
 @app.get("/resume/download")
 async def download_resume():
-    """Streams the resume file as a download attachment (used by Hero.tsx)"""
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
@@ -147,7 +156,7 @@ async def download_resume():
     )
 
 # ==========================================================
-# 📑 UPLOAD SUMMARY
+# 📑 SUMMARY UPLOAD
 # ==========================================================
 @app.post("/admin/upload_summary")
 async def upload_summary(file: UploadFile = File(...)):
@@ -171,12 +180,6 @@ async def upload_summary(file: UploadFile = File(...)):
     })
 
     return {"message": "Summary uploaded successfully"}
-
-
-# NOTE: UploadSummary.tsx was incorrectly calling "/upload-summary" (missing /admin/ prefix).
-# The correct endpoint is POST /admin/upload_summary above.
-# Fix in UploadSummary.tsx: change "/upload-summary" → "/admin/upload_summary"
-
 
 # ==========================================================
 # 🏆 CERTIFICATES
@@ -260,7 +263,6 @@ async def update_project(
     live_link: str = Form(""),
     screenshot: UploadFile = File(None)
 ):
-    """Update an existing project by ID (used by AddProject.tsx edit flow)"""
     update_data = {
         "title": title,
         "description": description,
@@ -269,7 +271,6 @@ async def update_project(
         "live_link": live_link,
     }
 
-    # Only re-upload image if a new screenshot is provided
     if screenshot and screenshot.filename:
         result = cloudinary.uploader.upload_large(
             screenshot.file,
@@ -386,7 +387,6 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(data: ChatRequest):
     user_question = data.question.strip().lower()
-
     greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"]
     if user_question in greetings:
         return {"answer": f"{data.question}! I'm Harsh's AI assistant. How can I help you with his skills or projects?"}
