@@ -76,11 +76,7 @@ app.add_middleware(
 # ==========================
 @app.get("/")
 def root():
-    """Optional: Redirect to frontend or just return API status"""
-    if FRONTEND_URL:
-        return RedirectResponse(url=FRONTEND_URL)
-    return JSONResponse({"message": "Portfolio API is running 🚀"})
-
+    return {"message": "Portfolio API is running 🚀"}
 # ==========================================================
 # 🔐 ADMIN LOGIN
 # ==========================================================
@@ -99,11 +95,10 @@ async def upload_resume(file: UploadFile = File(...)):
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".docx")):
         raise HTTPException(status_code=400, detail="Only PDF or DOCX allowed")
 
-    result = cloudinary.uploader.upload_large(
+    result = cloudinary.uploader.upload(
         file.file,
-        resource_type="auto",
-        folder="portfolio/resumes",
-        public_id=os.path.splitext(file.filename)[0]
+        resource_type="raw",
+        folder="portfolio/resumes"
     )
 
     resume_collection.delete_many({})
@@ -112,7 +107,10 @@ async def upload_resume(file: UploadFile = File(...)):
         "file_url": result["secure_url"]
     })
 
-    return {"message": "Resume uploaded successfully", "file_url": result["secure_url"]}
+    return {
+        "message": "Resume uploaded successfully",
+        "file_url": result["secure_url"]
+    }
 
 
 @app.get("/resume")
