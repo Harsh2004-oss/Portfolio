@@ -1,0 +1,113 @@
+/* ─── SKILLS ─────────────────────────────────────────────────────── */
+.skills-section {
+  background: var(--clr-bg);
+  position: relative;
+}
+
+.skills-container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+}
+
+.skills-header {
+  margin-bottom: var(--space-2xl);
+}
+
+/* MERN Stack cards */
+.skills-stack {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.stack-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl) var(--space-lg);
+  cursor: default;
+  transition: border-color var(--dur-normal) ease,
+              transform var(--dur-normal) var(--ease-out),
+              box-shadow var(--dur-normal) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stack-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--clr-accent-glow), transparent 60%);
+  opacity: 0;
+  transition: opacity var(--dur-normal) ease;
+}
+
+.stack-card:hover {
+  border-color: var(--clr-accent);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-accent), var(--shadow-md);
+}
+
+.stack-card:hover::before {
+  opacity: 1;
+}
+
+.stack-icon {
+  font-size: 2.4rem;
+  position: relative;
+  z-index: 1;
+}
+
+.stack-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--clr-text);
+  position: relative;
+  z-index: 1;
+}
+
+/* Skill tags */
+.skills-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.skill-tag {
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-full);
+  transition: background var(--dur-fast) ease,
+              border-color var(--dur-fast) ease,
+              color var(--dur-fast) ease;
+  cursor: default;
+}
+
+.skill-tag:hover {
+  background: var(--clr-accent-glow);
+  border-color: var(--clr-accent);
+  color: var(--clr-accent);
+}
+
+@media (max-width: 768px) {
+  .skills-stack {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .skills-stack {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+  }
+}
