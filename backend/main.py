@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Form, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr
 from admin import admin_collection, create_default_admin
 from db import (
@@ -15,6 +16,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 import docx
+import httpx
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -51,15 +53,11 @@ create_default_admin()
 app = FastAPI()
 
 # ==========================
-# CORS
-# ==========================
-# ==========================
 # CORS (Production Ready)
 # ==========================
 origins = ["http://localhost:5173"]
 
 allowed_origins = os.getenv("ALLOWED_ORIGINS")
-
 if allowed_origins:
     origins.extend([origin.strip() for origin in allowed_origins.split(",")])
 
@@ -82,7 +80,7 @@ def login(username: str = Form(...), password: str = Form(...)):
     return {"success": True}
 
 # ==========================================================
-# 📄 UPLOAD RESUME
+# 📄 RESUME — Upload, View, Download, Get Content
 # ==========================================================
 @app.post("/admin/upload_resume")
 async def upload_resume(file: UploadFile = File(...)):
@@ -103,6 +101,50 @@ async def upload_resume(file: UploadFile = File(...)):
     })
 
     return {"message": "Resume uploaded successfully", "file_url": result["secure_url"]}
+
+
+@app.get("/resume")
+def get_resume():
+    """Returns resume metadata and content (used by Resume.tsx)"""
+    resume = resume_collection.find_one(sort=[("_id", -1)])
+    if not resume:
+        raise HTTPException(status_code=404, detail="No resume uploaded yet")
+    return {
+        "filename": resume.get("filename"),
+        "file_url": resume.get("file_url"),
+        "content": resume.get("content", "")
+    }
+
+
+@app.get("/resume/view")
+def view_resume():
+    """Redirects browser to the Cloudinary-hosted resume for inline viewing (used by Hero.tsx)"""
+    resume = resume_collection.find_one(sort=[("_id", -1)])
+    if not resume or not resume.get("file_url"):
+        raise HTTPException(status_code=404, detail="No resume found")
+    return RedirectResponse(url=resume["file_url"])
+
+
+@app.get("/resume/download")
+async def download_resume():
+    """Streams the resume file as a download attachment (used by Hero.tsx)"""
+    resume = resume_collection.find_one(sort=[("_id", -1)])
+    if not resume or not resume.get("file_url"):
+        raise HTTPException(status_code=404, detail="No resume found")
+
+    file_url = resume["file_url"]
+    filename = resume.get("filename", "resume.pdf")
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(file_url)
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to fetch resume from storage")
+
+    return StreamingResponse(
+        iter([response.content]),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 # ==========================================================
 # 📑 UPLOAD SUMMARY
@@ -130,6 +172,12 @@ async def upload_summary(file: UploadFile = File(...)):
 
     return {"message": "Summary uploaded successfully"}
 
+
+# NOTE: UploadSummary.tsx was incorrectly calling "/upload-summary" (missing /admin/ prefix).
+# The correct endpoint is POST /admin/upload_summary above.
+# Fix in UploadSummary.tsx: change "/upload-summary" → "/admin/upload_summary"
+
+
 # ==========================================================
 # 🏆 CERTIFICATES
 # ==========================================================
@@ -153,6 +201,7 @@ async def upload_certificate(
     })
 
     return {"message": "Certificate uploaded successfully", "file_url": result["secure_url"]}
+
 
 @app.get("/certificates")
 def get_certificates():
@@ -180,7 +229,7 @@ async def add_project(
     screenshot: UploadFile = File(None)
 ):
     image_url = None
-    if screenshot:
+    if screenshot and screenshot.filename:
         result = cloudinary.uploader.upload_large(
             screenshot.file,
             resource_type="auto",
@@ -200,6 +249,47 @@ async def add_project(
 
     return {"message": "Project added successfully", "image_url": image_url}
 
+
+@app.put("/admin/update_project/{project_id}")
+async def update_project(
+    project_id: str,
+    title: str = Form(...),
+    description: str = Form(...),
+    tech_stack: str = Form(""),
+    github_link: str = Form(""),
+    live_link: str = Form(""),
+    screenshot: UploadFile = File(None)
+):
+    """Update an existing project by ID (used by AddProject.tsx edit flow)"""
+    update_data = {
+        "title": title,
+        "description": description,
+        "tech_stack": tech_stack,
+        "github_link": github_link,
+        "live_link": live_link,
+    }
+
+    # Only re-upload image if a new screenshot is provided
+    if screenshot and screenshot.filename:
+        result = cloudinary.uploader.upload_large(
+            screenshot.file,
+            resource_type="auto",
+            folder="portfolio/projects",
+            public_id=os.path.splitext(screenshot.filename)[0]
+        )
+        update_data["image_url"] = result["secure_url"]
+
+    result = projects_collection.update_one(
+        {"_id": ObjectId(project_id)},
+        {"$set": update_data}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    return {"message": "Project updated successfully"}
+
+
 @app.get("/projects")
 def get_projects():
     projects = list(projects_collection.find())
@@ -215,6 +305,7 @@ def get_projects():
         }
         for p in projects
     ]
+
 
 @app.delete("/admin/delete_project/{project_id}")
 def delete_project(project_id: str):
@@ -270,9 +361,7 @@ Message:
 
     return {"message": "Message sent successfully"}
 
-# ==========================================================
-# 📬 GET CONTACTS
-# ==========================================================
+
 @app.get("/admin/contacts")
 def get_contacts():
     contacts = list(contact_collection.find().sort("created_at", -1))
@@ -312,10 +401,10 @@ If answer not found say:
 "I'm not sure about that, but I can help with questions related to Harsh's skills, experience, or projects."
 
 RESUME:
-{resume.get('content','') if resume else ''}
+{resume.get('content', '') if resume else ''}
 
 SUMMARY:
-{summary.get('content','') if summary else ''}
+{summary.get('content', '') if summary else ''}
 
 User Question:
 {data.question}
