@@ -180,8 +180,9 @@ def view_resume():
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
 
-    return RedirectResponse(url=resume["file_url"])
-
+    return RedirectResponse(
+        url=resume["file_url"] + "?response-content-disposition=inline"
+    )
 
 @app.get("/resume/download")
 def download_resume():
@@ -189,8 +190,9 @@ def download_resume():
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
 
-    return RedirectResponse(url=resume["file_url"] + "?fl_attachment=true")
-
+    return RedirectResponse(
+        url=resume["file_url"] + "?fl_attachment=true"
+    )
 # ==========================================================
 # 📑 SUMMARY UPLOAD
 # ==========================================================
