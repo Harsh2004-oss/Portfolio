@@ -15,44 +15,28 @@ const Certificates = () => {
     api.get("/certificates").then(res => setCerts(res.data));
   }, []);
 
-  const getViewUrl = (cert: Certificate) => {
-    // Link to your backend endpoint instead of raw Cloudinary URL
-    return `/certificates/view/${cert.id}`;
+  const viewCertificate = (certId: string, title: string) => {
+    // Open the backend streaming URL in a new tab
+    const url = `${import.meta.env.VITE_API_BASE_URL}/certificates/view/${certId}`;
+    window.open(url, "_blank"); // Opens inline for PDF, inline for images
   };
 
   return (
     <section id="certificates" className="section">
       <h2>Certificates & Badges</h2>
       <div className="cert-grid">
-        {certs.map((c) => {
-          // Detect if file is PDF for inline viewing
-          const isPdf = c.file_url.toLowerCase().endsWith(".pdf");
-
-          return (
-            <div className="cert-card" key={c.id}>
-              <h3>{c.title}</h3>
-              <p>{c.description}</p>
-
-              {isPdf ? (
-                <a
-                  href={getViewUrl(c)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View PDF
-                </a>
-              ) : (
-                <a
-                  href={getViewUrl(c)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View Image
-                </a>
-              )}
-            </div>
-          );
-        })}
+        {certs.map((c) => (
+          <div className="cert-card" key={c.id}>
+            <h3>{c.title}</h3>
+            <p>{c.description}</p>
+            <button
+              onClick={() => viewCertificate(c.id, c.title)}
+              className="btn-view"
+            >
+              View
+            </button>
+          </div>
+        ))}
       </div>
     </section>
   );
