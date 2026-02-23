@@ -170,10 +170,21 @@ async def view_resume():
 
     file_url = resume["file_url"]
 
-    return RedirectResponse(
-        file_url + "?response-content-disposition=inline",
-        status_code=302
-    )
+    # Fetch file content from Cloudinary
+    async with httpx.AsyncClient() as client:
+        r = await client.get(file_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=404, detail="File not found on Cloudinary")
+
+        return StreamingResponse(
+            iter([r.content]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"inline; filename={resume['filename']}"}
+        )
+
+# ==========================
+# RESUME — Download (as PDF)
+# ==========================
 @app.get("/resume/download")
 async def download_resume():
     resume = resume_collection.find_one(sort=[("_id", -1)])
@@ -182,10 +193,17 @@ async def download_resume():
 
     file_url = resume["file_url"]
 
-    return RedirectResponse(
-        file_url + "?response-content-disposition=attachment",
-        status_code=302
-    )
+    # Fetch file content from Cloudinary
+    async with httpx.AsyncClient() as client:
+        r = await client.get(file_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=404, detail="File not found on Cloudinary")
+
+        return StreamingResponse(
+            iter([r.content]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={resume['filename']}"}
+        )
 # ==========================================================
 # 📑 SUMMARY UPLOAD
 # ==========================================================
