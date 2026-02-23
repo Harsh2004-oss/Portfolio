@@ -49,7 +49,7 @@ const ChatWidget = () => {
     <div className="chat-widget">
       {open && (
         <div className="chat-box">
-          <div className="chat-header">💬 Ask about my resume</div>
+          <div className="chat-header">💬 Ask about my portfolio</div>
 
           <div className="chat-messages">
             {messages.length === 0 && (
