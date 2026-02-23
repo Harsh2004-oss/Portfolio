@@ -107,10 +107,16 @@ async def upload_resume(file: UploadFile = File(...)):
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".docx")):
         raise HTTPException(status_code=400, detail="Only PDF or DOCX allowed")
 
+    file_ext = os.path.splitext(file.filename)[1].lstrip(".")
+    file_base = os.path.splitext(file.filename)[0]
+
     result = cloudinary.uploader.upload(
         file.file,
         resource_type="raw",
-        folder="portfolio/resumes"
+        folder="portfolio/resumes",
+        public_id=file_base,
+        format=file_ext,
+        overwrite=True
     )
 
     resume_collection.delete_many({})
@@ -146,21 +152,25 @@ async def view_resume():
     file_url = resume["file_url"]
     filename = resume.get("filename", "resume.pdf")
 
-    # For PDFs, fetch from Cloudinary and serve inline so browser displays it
+    # Fetch from Cloudinary and serve inline with correct Content-Type
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(file_url)
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to fetch resume from storage")
+
+    # Detect media type from filename
     if filename.lower().endswith(".pdf"):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(file_url)
-            if response.status_code != 200:
-                raise HTTPException(status_code=502, detail="Failed to fetch resume from storage")
+        media_type = "application/pdf"
+    elif filename.lower().endswith(".docx"):
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    else:
+        media_type = "application/octet-stream"
 
-        return StreamingResponse(
-            iter([response.content]),
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'inline; filename="{filename}"'}
-        )
-
-    # For non-PDF (e.g. DOCX), redirect to Cloudinary for download
-    return RedirectResponse(url=file_url)
+    return StreamingResponse(
+        iter([response.content]),
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'}
+    )
 
 
 @app.get("/resume/download")
@@ -246,6 +256,34 @@ def get_certificates():
         }
         for c in certs
     ]
+
+
+@app.get("/certificates/view/{cert_id}")
+async def view_certificate(cert_id: str):
+    cert = certificate_collection.find_one({"_id": ObjectId(cert_id)})
+    if not cert or not cert.get("file_url"):
+        raise HTTPException(status_code=404, detail="Certificate not found")
+
+    file_url = cert["file_url"]
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(file_url)
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to fetch certificate")
+
+    # Detect content type from URL or response
+    content_type = response.headers.get("content-type", "application/octet-stream")
+    if file_url.lower().endswith(".pdf"):
+        content_type = "application/pdf"
+    elif any(file_url.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp"]):
+        # Keep the content type from Cloudinary for images
+        pass
+
+    return StreamingResponse(
+        iter([response.content]),
+        media_type=content_type,
+        headers={"Content-Disposition": "inline"}
+    )
 
 # ==========================================================
 # 🚀 PROJECTS

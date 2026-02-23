@@ -11,6 +11,7 @@ const educationData = [
 ];
 
 interface Certificate {
+    id: string;
     title: string;
     description: string;
     file_url: string;
@@ -67,7 +68,7 @@ const Education = () => {
                         ) : certs.length > 0 ? (
                             certs.map((cert, i) => (
                                 <a
-                                    href={cert.file_url.startsWith("http") ? cert.file_url : `${api.defaults.baseURL}/${cert.file_url}`}
+                                    href={`${api.defaults.baseURL}/certificates/view/${cert.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     key={i}
