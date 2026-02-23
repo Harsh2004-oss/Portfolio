@@ -33,7 +33,7 @@ const Education = () => {
 
   // ✅ Backend view route use karenge (NOT direct Cloudinary URL)
   const getViewUrl = (id: string) => {
-    return `${import.meta.env.VITE_API__BASE_URL}/certificates/view/${id}`;
+    return `${import.meta.env.VITE_API_BASE_URL}/certificates/view/${id}`;
   };
 
   return (
