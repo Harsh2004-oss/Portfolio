@@ -273,8 +273,6 @@ def get_certificates():
         }
         for c in certs
     ]
-
-
 @app.get("/certificates/view/{cert_id}")
 async def view_certificate(cert_id: str):
     cert = certificate_collection.find_one({"_id": ObjectId(cert_id)})
@@ -283,35 +281,27 @@ async def view_certificate(cert_id: str):
 
     file_url = cert["file_url"]
 
-    # Try to fetch and serve inline
-    # Cloudinary may store under different delivery types (image/raw/video)
-    # Try the original URL first, then try raw variant for PDFs
-    urls_to_try = [file_url]
+    async with httpx.AsyncClient() as client:
+        r = await client.get(file_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=404, detail="File not found on Cloudinary")
 
-    # If stored as image/upload, also try raw/upload for PDFs
-    if "/image/upload/" in file_url and file_url.lower().endswith(".pdf"):
-        urls_to_try.append(file_url.replace("/image/upload/", "/raw/upload/"))
+        # Detect MIME type
+        filename = cert['file_url'].split('/')[-1].lower()
+        if filename.endswith('.pdf'):
+            media_type = "application/pdf"
+        elif filename.endswith(('.jpg', '.jpeg')):
+            media_type = "image/jpeg"
+        elif filename.endswith('.png'):
+            media_type = "image/png"
+        else:
+            media_type = "application/octet-stream"
 
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-        for url in urls_to_try:
-            try:
-                response = await client.get(url)
-                if response.status_code == 200:
-                    # Detect content type
-                    content_type = response.headers.get("content-type", "application/octet-stream")
-                    if url.lower().endswith(".pdf"):
-                        content_type = "application/pdf"
-
-                    return StreamingResponse(
-                        iter([response.content]),
-                        media_type=content_type,
-                        headers={"Content-Disposition": "inline"}
-                    )
-            except Exception:
-                continue
-
-    # Fallback: redirect to the original URL directly
-    return RedirectResponse(url=file_url)
+        return StreamingResponse(
+            iter([r.content]),
+            media_type=media_type,
+            headers={"Content-Disposition": f"inline; filename={cert['title']}"}
+        )
 
 # ==========================================================
 # 🚀 PROJECTS
