@@ -138,11 +138,29 @@ def get_resume():
 
 
 @app.get("/resume/view")
-def view_resume():
+async def view_resume():
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
-    return RedirectResponse(url=resume["file_url"])
+
+    file_url = resume["file_url"]
+    filename = resume.get("filename", "resume.pdf")
+
+    # For PDFs, fetch from Cloudinary and serve inline so browser displays it
+    if filename.lower().endswith(".pdf"):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(file_url)
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail="Failed to fetch resume from storage")
+
+        return StreamingResponse(
+            iter([response.content]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        )
+
+    # For non-PDF (e.g. DOCX), redirect to Cloudinary for download
+    return RedirectResponse(url=file_url)
 
 
 @app.get("/resume/download")
