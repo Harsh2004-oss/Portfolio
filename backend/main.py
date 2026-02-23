@@ -161,19 +161,29 @@ def get_resume():
 
 
 @app.get("/resume/view")
-def view_resume():
+async def view_resume():
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
 
     file_url = resume["file_url"]
+    filename = resume.get("filename", "resume.pdf")
 
-    # Add fl_attachment:false to Cloudinary URL to force inline display
-    # Transforms: .../raw/upload/v123/... → .../raw/upload/fl_attachment:false/v123/...
-    if "/raw/upload/" in file_url:
-        file_url = file_url.replace("/raw/upload/", "/raw/upload/fl_attachment:false/")
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
 
-    return RedirectResponse(url=file_url)
+    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+        response = await client.get(file_url, headers=headers)
+        print(f"📄 Resume fetch: status={response.status_code}, url={file_url}")
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Cloudinary returned {response.status_code}")
+
+    media_type = "application/pdf" if filename.lower().endswith(".pdf") else "application/octet-stream"
+
+    return StreamingResponse(
+        iter([response.content]),
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'}
+    )
 
 
 @app.get("/resume/download")
@@ -185,10 +195,12 @@ async def download_resume():
     file_url = resume["file_url"]
     filename = resume.get("filename", "resume.pdf")
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(file_url)
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
+
+    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+        response = await client.get(file_url, headers=headers)
         if response.status_code != 200:
-            raise HTTPException(status_code=502, detail="Failed to fetch resume from storage")
+            raise HTTPException(status_code=502, detail=f"Cloudinary returned {response.status_code}")
 
     return StreamingResponse(
         iter([response.content]),

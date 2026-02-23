@@ -3,42 +3,13 @@ import { api } from "../api";
 
 const Hero = () => {
   // Open resume PDF in a new browser tab
-  const handleViewResume = async () => {
-    try {
-      const res = await api.get("/resume");
-      const fileUrl = res.data.file_url;
-      if (!fileUrl) { alert("No resume uploaded yet."); return; }
-
-      const pdfRes = await fetch(fileUrl);
-      const blob = await pdfRes.blob();
-      const blobUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
-      window.open(blobUrl, "_blank");
-    } catch {
-      alert("Could not load resume. Please try again.");
-    }
+  const handleViewResume = () => {
+    window.open(`${api.defaults.baseURL}/resume/view`, "_blank");
   };
 
   // Download resume PDF
-  const handleDownloadResume = async () => {
-    try {
-      const res = await api.get("/resume");
-      const fileUrl = res.data.file_url;
-      const filename = res.data.filename || "Harsh_Aerndolkar_Resume.pdf";
-      if (!fileUrl) { alert("No resume uploaded yet."); return; }
-
-      const pdfRes = await fetch(fileUrl);
-      const blob = await pdfRes.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      alert("Could not download resume. Please try again.");
-    }
+  const handleDownloadResume = () => {
+    window.open(`${api.defaults.baseURL}/resume/download`, "_blank");
   };
 
   return (
