@@ -132,7 +132,7 @@ async def upload_resume(file: UploadFile = File(...)):
     # Upload using bytes (NOT file.file)
     result = cloudinary.uploader.upload(
         file_bytes,
-        resource_type="image",
+        resource_type="raw",
         folder="portfolio/resumes",
         public_id=file_base,
         overwrite=True
