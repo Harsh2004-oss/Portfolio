@@ -2,36 +2,14 @@ import profileImg from "../assets/Harsh_profile.jpeg";
 import { api } from "../api";
 
 const Hero = () => {
-  // Open resume PDF using Google Docs Viewer (works with any URL)
-  const handleViewResume = async () => {
-    try {
-      const res = await api.get("/resume");
-      const fileUrl = res.data.file_url;
-      if (fileUrl) {
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-        window.open(viewerUrl, "_blank");
-      } else {
-        alert("No resume uploaded yet.");
-      }
-    } catch {
-      alert("Could not load resume. Please try again.");
-    }
+  // Open resume PDF in a new browser tab
+  const handleViewResume = () => {
+    window.open(`${api.defaults.baseURL}/resume/view`, "_blank");
   };
 
-  // Download resume PDF directly from Cloudinary
-  const handleDownloadResume = async () => {
-    try {
-      const res = await api.get("/resume");
-      const fileUrl = res.data.file_url;
-      if (!fileUrl) {
-        alert("No resume uploaded yet.");
-        return;
-      }
-      window.open(fileUrl, "_blank");
-    } catch (err) {
-      console.error("Failed to download resume:", err);
-      alert("Could not download resume. Please try again.");
-    }
+  // Download resume PDF
+  const handleDownloadResume = () => {
+    window.open(`${api.defaults.baseURL}/resume/download`, "_blank");
   };
 
   return (
