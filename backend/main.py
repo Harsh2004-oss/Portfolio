@@ -127,13 +127,12 @@ async def upload_resume(file: UploadFile = File(...)):
     file_base = os.path.splitext(file.filename)[0]
 
     result = cloudinary.uploader.upload(
-        file.file,
-        resource_type="raw",
-        folder="portfolio/resumes",
-        public_id=file_base,
-        format=file_ext,
-        overwrite=True
-    )
+    file.file,
+    resource_type="auto",
+    folder="portfolio/resumes",
+    public_id=file_base,
+    overwrite=True
+)
 
     resume_collection.delete_many({})
     resume_collection.insert_one({
@@ -159,54 +158,22 @@ def get_resume():
         "content": resume.get("content", "")
     }
 
-
 @app.get("/resume/view")
-async def view_resume():
+def view_resume():
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
 
-    file_url = resume["file_url"]
-    filename = resume.get("filename", "resume.pdf")
-
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
-
-    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-        response = await client.get(file_url, headers=headers)
-        print(f"📄 Resume fetch: status={response.status_code}, url={file_url}")
-        if response.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"Cloudinary returned {response.status_code}")
-
-    media_type = "application/pdf" if filename.lower().endswith(".pdf") else "application/octet-stream"
-
-    return StreamingResponse(
-        iter([response.content]),
-        media_type=media_type,
-        headers={"Content-Disposition": f'inline; filename="{filename}"'}
-    )
+    return RedirectResponse(url=resume["file_url"])
 
 
 @app.get("/resume/download")
-async def download_resume():
+def download_resume():
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
 
-    file_url = resume["file_url"]
-    filename = resume.get("filename", "resume.pdf")
-
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
-
-    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-        response = await client.get(file_url, headers=headers)
-        if response.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"Cloudinary returned {response.status_code}")
-
-    return StreamingResponse(
-        iter([response.content]),
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
+    return RedirectResponse(url=resume["file_url"] + "?fl_attachment=true")
 
 # ==========================================================
 # 📑 SUMMARY UPLOAD
@@ -248,14 +215,13 @@ async def upload_certificate(
     # Use 'raw' for PDFs (so they're accessible), 'auto' for images
     res_type = "raw" if file_ext == ".pdf" else "auto"
 
-    result = cloudinary.uploader.upload_large(
-        file.file,
-        resource_type=res_type,
-        folder="portfolio/certificates",
-        public_id=os.path.splitext(file.filename)[0],
-        format=file_ext.lstrip(".") if file_ext == ".pdf" else None,
-        overwrite=True
-    )
+    result = cloudinary.uploader.upload(
+    file.file,
+    resource_type="auto",
+    folder="portfolio/certificates",
+    public_id=os.path.splitext(file.filename)[0],
+    overwrite=True
+)
 
     certificate_collection.insert_one({
         "title": title,
