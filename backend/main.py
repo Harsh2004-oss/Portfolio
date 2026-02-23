@@ -107,32 +107,48 @@ async def upload_resume(file: UploadFile = File(...)):
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".docx")):
         raise HTTPException(status_code=400, detail="Only PDF or DOCX allowed")
 
+    # Read file bytes once
+    file_bytes = await file.read()
+
     # Extract text content for chatbot context
     content = ""
     try:
         if file.filename.lower().endswith(".pdf"):
             import PyPDF2
-            reader = PyPDF2.PdfReader(file.file)
+            from io import BytesIO
+            reader = PyPDF2.PdfReader(BytesIO(file_bytes))
             content = "\n".join([page.extract_text() or "" for page in reader.pages])
+
         elif file.filename.lower().endswith(".docx"):
-            doc = docx.Document(file.file)
+            from io import BytesIO
+            doc = docx.Document(BytesIO(file_bytes))
             content = "\n".join([para.text for para in doc.paragraphs])
+
     except Exception as e:
         print(f"⚠️ Text extraction failed: {e}")
 
-    # Reset file position for Cloudinary upload
-    file.file.seek(0)
-
-    file_ext = os.path.splitext(file.filename)[1].lstrip(".")
     file_base = os.path.splitext(file.filename)[0]
 
+    # Upload using bytes (NOT file.file)
     result = cloudinary.uploader.upload(
-    file.file,
-    resource_type="raw",
-    folder="portfolio/resumes",
-    public_id=file_base,
-    overwrite=True
-)
+        file_bytes,
+        resource_type="raw",
+        folder="portfolio/resumes",
+        public_id=file_base,
+        overwrite=True
+    )
+
+    resume_collection.delete_many({})
+    resume_collection.insert_one({
+        "filename": file.filename,
+        "file_url": result["secure_url"],
+        "content": content
+    })
+
+    return {
+        "message": "Resume uploaded successfully",
+        "file_url": result["secure_url"]
+    }
 
     resume_collection.delete_many({})
     resume_collection.insert_one({
