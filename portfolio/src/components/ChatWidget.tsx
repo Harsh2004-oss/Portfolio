@@ -27,11 +27,17 @@ const ChatWidget = () => {
       const reply = res.data.answer || "Sorry, I couldn't process that.";
 
       setMessages((prev) => [...prev, { role: "ai", content: reply }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      const isTimeout = error?.code === "ECONNABORTED" || error?.message?.includes("timeout");
+      const isNetwork = error?.message === "Network Error";
+      const errorMsg =
+        isTimeout || isNetwork
+          ? "⏳ The server is waking up (free tier). Please wait a moment and try again!"
+          : "Oops! Something went wrong. Please try again.";
       setMessages((prev) => [
         ...prev,
-        { role: "ai", content: "Oops! Something went wrong. Please try again." },
+        { role: "ai", content: errorMsg },
       ]);
     } finally {
       setLoading(false);

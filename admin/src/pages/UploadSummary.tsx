@@ -10,7 +10,7 @@ const UploadSummary: React.FC = () => {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await api.post("/upload-summary", formData);
+    const res = await api.post("/admin/upload_summary", formData);
     alert(res.data.message || "Summary uploaded successfully!");
   };
 

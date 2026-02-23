@@ -167,7 +167,7 @@ const AddProject: React.FC = () => {
 
           {p.image_url && (
             <img
-              src={`${api.defaults.baseURL}/${p.image_url}`}
+              src={p.image_url.startsWith("http") ? p.image_url : `${api.defaults.baseURL}/${p.image_url}`}
               alt={p.title}
               style={{ width: 200, marginBottom: 10 }}
             />

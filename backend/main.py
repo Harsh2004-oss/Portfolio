@@ -72,6 +72,18 @@ app.add_middleware(
 )
 
 # ==========================
+# Global Exception Handler (ensures CORS headers on 500 errors)
+# ==========================
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    traceback.print_exc()  # Log the full error on Render
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+    )
+
+# ==========================
 # ROOT ROUTE
 # ==========================
 @app.get("/")

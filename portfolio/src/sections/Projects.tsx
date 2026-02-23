@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 
 interface Project {
@@ -58,7 +58,7 @@ const Projects = () => {
                             <div className="project-image">
                                 {project.image_url ? (
                                     <img
-                                        src={`${api.defaults.baseURL}${project.image_url}`}
+                                        src={project.image_url.startsWith("http") ? project.image_url : `${api.defaults.baseURL}${project.image_url}`}
                                         alt={project.title}
                                         style={{
                                             width: "100%",
