@@ -107,6 +107,22 @@ async def upload_resume(file: UploadFile = File(...)):
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".docx")):
         raise HTTPException(status_code=400, detail="Only PDF or DOCX allowed")
 
+    # Extract text content for chatbot context
+    content = ""
+    try:
+        if file.filename.lower().endswith(".pdf"):
+            import PyPDF2
+            reader = PyPDF2.PdfReader(file.file)
+            content = "\n".join([page.extract_text() or "" for page in reader.pages])
+        elif file.filename.lower().endswith(".docx"):
+            doc = docx.Document(file.file)
+            content = "\n".join([para.text for para in doc.paragraphs])
+    except Exception as e:
+        print(f"⚠️ Text extraction failed: {e}")
+
+    # Reset file position for Cloudinary upload
+    file.file.seek(0)
+
     file_ext = os.path.splitext(file.filename)[1].lstrip(".")
     file_base = os.path.splitext(file.filename)[0]
 
@@ -122,7 +138,8 @@ async def upload_resume(file: UploadFile = File(...)):
     resume_collection.delete_many({})
     resume_collection.insert_one({
         "filename": file.filename,
-        "file_url": result["secure_url"]
+        "file_url": result["secure_url"],
+        "content": content
     })
 
     return {
