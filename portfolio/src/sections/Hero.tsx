@@ -2,12 +2,12 @@ import profileImg from "../assets/Harsh_profile.jpeg";
 import { api } from "../api";
 
 const Hero = () => {
-  // Open resume PDF in a new browser tab
+  // Open resume PDF in the same browser tab
   const handleViewResume = () => {
-    window.open(`${api.defaults.baseURL}/resume/view`, "_blank");
+    window.location.href = `${api.defaults.baseURL}/resume/view`;
   };
 
-  // Download resume PDF
+  // Download resume PDF in a new tab
   const handleDownloadResume = () => {
     window.open(`${api.defaults.baseURL}/resume/download`, "_blank");
   };
