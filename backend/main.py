@@ -161,36 +161,18 @@ def get_resume():
 
 
 @app.get("/resume/view")
-async def view_resume():
+def view_resume():
     resume = resume_collection.find_one(sort=[("_id", -1)])
     if not resume or not resume.get("file_url"):
         raise HTTPException(status_code=404, detail="No resume found")
 
     file_url = resume["file_url"]
-    filename = resume.get("filename", "resume.pdf")
 
-    # Try to fetch from Cloudinary and serve inline
-    try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            response = await client.get(file_url)
-            if response.status_code == 200:
-                # Detect media type from filename
-                if filename.lower().endswith(".pdf"):
-                    media_type = "application/pdf"
-                elif filename.lower().endswith(".docx"):
-                    media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                else:
-                    media_type = "application/octet-stream"
+    # Add fl_attachment:false to Cloudinary URL to force inline display
+    # Transforms: .../raw/upload/v123/... → .../raw/upload/fl_attachment:false/v123/...
+    if "/raw/upload/" in file_url:
+        file_url = file_url.replace("/raw/upload/", "/raw/upload/fl_attachment:false/")
 
-                return StreamingResponse(
-                    iter([response.content]),
-                    media_type=media_type,
-                    headers={"Content-Disposition": f'inline; filename="{filename}"'}
-                )
-    except Exception as e:
-        print(f"⚠️ Resume proxy fetch failed: {e}")
-
-    # Fallback: redirect directly to Cloudinary URL
     return RedirectResponse(url=file_url)
 
 
