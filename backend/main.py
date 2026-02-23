@@ -175,23 +175,20 @@ def get_resume():
     }
 @app.get("/resume/view")
 async def view_resume():
-    url = cloudinary.CloudinaryImage(
-        "portfolio/resumes/Harsh_Aerndolkar_Resume"
-    ).build_url(
+    url, _ = cloudinary.utils.cloudinary_url(
+        "portfolio/resumes/current_resume",
         resource_type="raw",
         secure=True
     )
 
-    # Force inline display
     return RedirectResponse(
         url + "?response-content-disposition=inline",
         status_code=302
     )
 @app.get("/resume/download")
 async def download_resume():
-    url = cloudinary.CloudinaryImage(
-        "portfolio/resumes/Harsh_Aerndolkar_Resume"
-    ).build_url(
+    url, _ = cloudinary.utils.cloudinary_url(
+        "portfolio/resumes/current_resume",
         resource_type="raw",
         secure=True
     )
