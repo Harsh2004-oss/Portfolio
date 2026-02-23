@@ -490,8 +490,8 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(data: ChatRequest):
     user_question = data.question.strip().lower()
-    greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"]
-    if user_question in greetings:
+    greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "hii", "hiii", "yo", "sup", "hola", "namaste"]
+    if any(user_question.startswith(g) for g in greetings):
         return {"answer": f"{data.question}! I'm Harsh's AI assistant. How can I help you with his skills or projects?"}
 
     resume = resume_collection.find_one(sort=[("_id", -1)])
