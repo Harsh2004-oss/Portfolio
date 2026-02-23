@@ -150,17 +150,6 @@ async def upload_resume(file: UploadFile = File(...)):
         "file_url": result["secure_url"]
     }
 
-    resume_collection.delete_many({})
-    resume_collection.insert_one({
-        "filename": file.filename,
-        "file_url": result["secure_url"],
-        "content": content
-    })
-
-    return {
-        "message": "Resume uploaded successfully",
-        "file_url": result["secure_url"]
-    }
 
 
 @app.get("/resume")
