@@ -68,7 +68,7 @@ const Education = () => {
                         ) : certs.length > 0 ? (
                             certs.map((cert, i) => (
                                 <a
-                                    href={`${api.defaults.baseURL}/certificates/view/${cert.id}`}
+                                    href={cert.file_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     key={i}

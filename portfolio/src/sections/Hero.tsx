@@ -2,38 +2,41 @@ import profileImg from "../assets/Harsh_profile.jpeg";
 import { api } from "../api";
 
 const Hero = () => {
-  // Open resume PDF in a new browser tab
-  const handleViewResume = () => {
-    window.open(`${api.defaults.baseURL}/resume/view`, "_blank");
+  // Open resume PDF directly from Cloudinary
+  const handleViewResume = async () => {
+    try {
+      const res = await api.get("/resume");
+      const fileUrl = res.data.file_url;
+      if (fileUrl) {
+        window.open(fileUrl, "_blank");
+      } else {
+        alert("No resume uploaded yet.");
+      }
+    } catch {
+      alert("Could not load resume. Please try again.");
+    }
   };
 
-  // Download resume PDF
+  // Download resume PDF directly from Cloudinary
   const handleDownloadResume = async () => {
     try {
-      const response = await fetch(`${api.defaults.baseURL}/resume/download`);
-      if (!response.ok) throw new Error("Failed to fetch resume PDF");
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-
-      const disposition = response.headers.get("Content-Disposition");
-      let filename = "Harsh_Aerndolkar_Resume.pdf";
-      if (disposition && disposition.includes("filename=")) {
-        filename = disposition.split("filename=")[1].replace(/"/g, "");
+      const res = await api.get("/resume");
+      const fileUrl = res.data.file_url;
+      const filename = res.data.filename || "Harsh_Aerndolkar_Resume.pdf";
+      if (!fileUrl) {
+        alert("No resume uploaded yet.");
+        return;
       }
-
+      const link = document.createElement("a");
+      link.href = fileUrl;
       link.download = filename;
+      link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
-      URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Failed to download resume:", err);
-      alert("Could not download resume. Make sure the backend server is running.");
+      alert("Could not download resume. Please try again.");
     }
   };
 
