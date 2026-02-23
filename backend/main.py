@@ -274,21 +274,23 @@ def get_certificates():
         for c in certs
     ]
 @app.get("/certificates/view/{cert_id}")
-def view_certificate(cert_id: str):
+async def view_certificate(cert_id: str):
     cert = certificate_collection.find_one({"_id": ObjectId(cert_id)})
     if not cert or not cert.get("file_url"):
         raise HTTPException(status_code=404, detail="Certificate not found")
 
     file_url = cert["file_url"]
 
-    # Agar PDF hai, browser me inline kholne ke liye Cloudinary param
-    if file_url.lower().endswith(".pdf"):
-        if "?" in file_url:
-            file_url += "&response-content-disposition=inline"
-        else:
-            file_url += "?response-content-disposition=inline"
+    async with httpx.AsyncClient() as client:
+        r = await client.get(file_url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=404, detail="File not found on Cloudinary")
 
-    return RedirectResponse(url=file_url)
+        return StreamingResponse(
+            iter([r.content]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": "inline"}
+        )
 # ==========================================================
 # 🚀 PROJECTS
 # ==========================================================
