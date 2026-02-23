@@ -68,7 +68,7 @@ const Education = () => {
                         ) : certs.length > 0 ? (
                             certs.map((cert, i) => (
                                 <a
-                                    href={cert.file_url}
+                                    href={cert.file_url.toLowerCase().endsWith(".pdf") ? `https://docs.google.com/viewer?url=${encodeURIComponent(cert.file_url)}&embedded=true` : cert.file_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     key={i}

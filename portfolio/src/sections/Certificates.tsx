@@ -16,7 +16,7 @@ const Certificates = () => {
           <div className="cert-card" key={c.file_url}>
             <h3>{c.title}</h3>
             <p>{c.description}</p>
-            <a href={c.file_url} target="_blank">
+            <a href={c.file_url.toLowerCase().endsWith(".pdf") ? `https://docs.google.com/viewer?url=${encodeURIComponent(c.file_url)}&embedded=true` : c.file_url} target="_blank">
               View
             </a>
           </div>
