@@ -128,7 +128,7 @@ async def upload_resume(file: UploadFile = File(...)):
 
     result = cloudinary.uploader.upload(
     file.file,
-    resource_type="auto",
+    resource_type="raw",
     folder="portfolio/resumes",
     public_id=file_base,
     overwrite=True
@@ -217,7 +217,7 @@ async def upload_certificate(
 
     result = cloudinary.uploader.upload(
     file.file,
-    resource_type="auto",
+    resource_type=res_type,
     folder="portfolio/certificates",
     public_id=os.path.splitext(file.filename)[0],
     overwrite=True
