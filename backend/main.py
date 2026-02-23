@@ -132,7 +132,7 @@ async def upload_resume(file: UploadFile = File(...)):
     # Upload using bytes (NOT file.file)
     result = cloudinary.uploader.upload(
         file_bytes,
-        resource_type="raw",
+        resource_type="image",
         folder="portfolio/resumes",
         public_id=file_base,
         overwrite=True
@@ -175,26 +175,26 @@ def get_resume():
     }
 @app.get("/resume/view")
 async def view_resume():
-    url, _ = cloudinary.utils.cloudinary_url(
-        "portfolio/resumes/current_resume",
-        resource_type="raw",
-        secure=True
-    )
+    resume = resume_collection.find_one(sort=[("_id", -1)])
+    if not resume or not resume.get("file_url"):
+        raise HTTPException(status_code=404, detail="No resume uploaded")
+
+    file_url = resume["file_url"]
 
     return RedirectResponse(
-        url + "?response-content-disposition=inline",
+        file_url + "?response-content-disposition=inline",
         status_code=302
     )
 @app.get("/resume/download")
 async def download_resume():
-    url, _ = cloudinary.utils.cloudinary_url(
-        "portfolio/resumes/current_resume",
-        resource_type="raw",
-        secure=True
-    )
+    resume = resume_collection.find_one(sort=[("_id", -1)])
+    if not resume or not resume.get("file_url"):
+        raise HTTPException(status_code=404, detail="No resume uploaded")
+
+    file_url = resume["file_url"]
 
     return RedirectResponse(
-        url + "?response-content-disposition=attachment",
+        file_url + "?response-content-disposition=attachment",
         status_code=302
     )
 # ==========================================================
