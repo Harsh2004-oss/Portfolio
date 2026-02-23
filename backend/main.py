@@ -390,9 +390,7 @@ class ContactRequest(BaseModel):
 
 @app.post("/contact")
 def contact(data: ContactRequest):
-    if not EMAIL_USER or not EMAIL_PASS:
-        raise HTTPException(status_code=500, detail="Email credentials not configured")
-
+    # Save to database first (this is the important part)
     contact_collection.insert_one({
         "name": data.name,
         "email": data.email,
@@ -401,12 +399,16 @@ def contact(data: ContactRequest):
         "created_at": datetime.utcnow()
     })
 
-    msg = MIMEMultipart()
-    msg["From"] = EMAIL_USER
-    msg["To"] = EMAIL_USER
-    msg["Subject"] = data.subject or "New Portfolio Contact Message"
+    # Try to send email notification (best-effort, don't fail the request)
+    email_sent = False
+    if EMAIL_USER and EMAIL_PASS:
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = EMAIL_USER
+            msg["To"] = EMAIL_USER
+            msg["Subject"] = data.subject or "New Portfolio Contact Message"
 
-    body = f"""
+            body = f"""
 New message from portfolio:
 
 Name: {data.name}
@@ -416,17 +418,17 @@ Subject: {data.subject}
 Message:
 {data.message}
 """
-    msg.attach(MIMEText(body, "plain"))
+            msg.attach(MIMEText(body, "plain"))
 
-    try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(EMAIL_USER, EMAIL_PASS)
-            server.send_message(msg)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                server.starttls()
+                server.login(EMAIL_USER, EMAIL_PASS)
+                server.send_message(msg)
+            email_sent = True
+        except Exception as e:
+            print(f"⚠️ Email notification failed: {e}")
 
-    return {"message": "Message sent successfully"}
+    return {"message": "Message sent successfully", "email_sent": email_sent}
 
 
 @app.get("/admin/contacts")
