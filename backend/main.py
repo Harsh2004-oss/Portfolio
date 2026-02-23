@@ -282,13 +282,13 @@ async def view_certificate(cert_id: str):
     file_url = cert["file_url"]
     filename = cert["title"]
 
-    # Fetch file content from Cloudinary
+    # Fetch PDF/image from Cloudinary via FastAPI
     async with httpx.AsyncClient() as client:
         r = await client.get(file_url)
         if r.status_code != 200:
             raise HTTPException(status_code=404, detail="File not found on Cloudinary")
 
-        # Detect MIME type based on file extension
+        # Determine MIME type
         url_lower = file_url.lower()
         if url_lower.endswith(".pdf"):
             media_type = "application/pdf"
@@ -299,10 +299,11 @@ async def view_certificate(cert_id: str):
         else:
             media_type = "application/octet-stream"
 
+        # Streaming PDF or Image inline (like resume)
         return StreamingResponse(
             iter([r.content]),
             media_type=media_type,
-            headers={"Content-Disposition": f"inline; filename={filename}"}
+            headers={"Content-Disposition": f"inline; filename={filename}.{'pdf' if media_type=='application/pdf' else 'jpg'}"}
         )
 # ==========================================================
 # 🚀 PROJECTS
