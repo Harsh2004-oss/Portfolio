@@ -169,25 +169,29 @@ async def view_resume():
     file_url = resume["file_url"]
     filename = resume.get("filename", "resume.pdf")
 
-    # Fetch from Cloudinary and serve inline with correct Content-Type
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(file_url)
-        if response.status_code != 200:
-            raise HTTPException(status_code=502, detail="Failed to fetch resume from storage")
+    # Try to fetch from Cloudinary and serve inline
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            response = await client.get(file_url)
+            if response.status_code == 200:
+                # Detect media type from filename
+                if filename.lower().endswith(".pdf"):
+                    media_type = "application/pdf"
+                elif filename.lower().endswith(".docx"):
+                    media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                else:
+                    media_type = "application/octet-stream"
 
-    # Detect media type from filename
-    if filename.lower().endswith(".pdf"):
-        media_type = "application/pdf"
-    elif filename.lower().endswith(".docx"):
-        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    else:
-        media_type = "application/octet-stream"
+                return StreamingResponse(
+                    iter([response.content]),
+                    media_type=media_type,
+                    headers={"Content-Disposition": f'inline; filename="{filename}"'}
+                )
+    except Exception as e:
+        print(f"⚠️ Resume proxy fetch failed: {e}")
 
-    return StreamingResponse(
-        iter([response.content]),
-        media_type=media_type,
-        headers={"Content-Disposition": f'inline; filename="{filename}"'}
-    )
+    # Fallback: redirect directly to Cloudinary URL
+    return RedirectResponse(url=file_url)
 
 
 @app.get("/resume/download")
