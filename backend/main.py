@@ -228,11 +228,18 @@ async def upload_certificate(
     description: str = Form(...),
     file: UploadFile = File(...)
 ):
+    file_ext = os.path.splitext(file.filename)[1].lower()
+
+    # Use 'raw' for PDFs (so they're accessible), 'auto' for images
+    res_type = "raw" if file_ext == ".pdf" else "auto"
+
     result = cloudinary.uploader.upload_large(
         file.file,
-        resource_type="auto",
+        resource_type=res_type,
         folder="portfolio/certificates",
-        public_id=os.path.splitext(file.filename)[0]
+        public_id=os.path.splitext(file.filename)[0],
+        format=file_ext.lstrip(".") if file_ext == ".pdf" else None,
+        overwrite=True
     )
 
     certificate_collection.insert_one({
@@ -266,24 +273,35 @@ async def view_certificate(cert_id: str):
 
     file_url = cert["file_url"]
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(file_url)
-        if response.status_code != 200:
-            raise HTTPException(status_code=502, detail="Failed to fetch certificate")
+    # Try to fetch and serve inline
+    # Cloudinary may store under different delivery types (image/raw/video)
+    # Try the original URL first, then try raw variant for PDFs
+    urls_to_try = [file_url]
 
-    # Detect content type from URL or response
-    content_type = response.headers.get("content-type", "application/octet-stream")
-    if file_url.lower().endswith(".pdf"):
-        content_type = "application/pdf"
-    elif any(file_url.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp"]):
-        # Keep the content type from Cloudinary for images
-        pass
+    # If stored as image/upload, also try raw/upload for PDFs
+    if "/image/upload/" in file_url and file_url.lower().endswith(".pdf"):
+        urls_to_try.append(file_url.replace("/image/upload/", "/raw/upload/"))
 
-    return StreamingResponse(
-        iter([response.content]),
-        media_type=content_type,
-        headers={"Content-Disposition": "inline"}
-    )
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        for url in urls_to_try:
+            try:
+                response = await client.get(url)
+                if response.status_code == 200:
+                    # Detect content type
+                    content_type = response.headers.get("content-type", "application/octet-stream")
+                    if url.lower().endswith(".pdf"):
+                        content_type = "application/pdf"
+
+                    return StreamingResponse(
+                        iter([response.content]),
+                        media_type=content_type,
+                        headers={"Content-Disposition": "inline"}
+                    )
+            except Exception:
+                continue
+
+    # Fallback: redirect to the original URL directly
+    return RedirectResponse(url=file_url)
 
 # ==========================================================
 # 🚀 PROJECTS
