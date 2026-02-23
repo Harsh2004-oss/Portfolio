@@ -2,6 +2,19 @@
 .skills-section {
   background: var(--clr-bg);
   position: relative;
+  overflow: hidden;
+}
+
+.skills-section::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(124, 58, 237, 0.04) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .skills-container {
@@ -32,8 +45,8 @@
   padding: var(--space-xl) var(--space-lg);
   cursor: default;
   transition: border-color var(--dur-normal) ease,
-              transform var(--dur-normal) var(--ease-out),
-              box-shadow var(--dur-normal) ease;
+    transform var(--dur-normal) var(--ease-out),
+    box-shadow var(--dur-normal) ease;
   position: relative;
   overflow: hidden;
 }
@@ -49,7 +62,7 @@
 
 .stack-card:hover {
   border-color: var(--clr-accent);
-  transform: translateY(-6px);
+  transform: translateY(-8px);
   box-shadow: var(--shadow-accent), var(--shadow-md);
 }
 
@@ -58,15 +71,20 @@
 }
 
 .stack-icon {
-  font-size: 2.4rem;
+  font-size: 2.6rem;
   position: relative;
   z-index: 1;
+  transition: transform var(--dur-normal) var(--ease-out);
+}
+
+.stack-card:hover .stack-icon {
+  transform: scale(1.15);
 }
 
 .stack-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--clr-text);
   position: relative;
   z-index: 1;
@@ -85,11 +103,12 @@
   color: var(--clr-text-muted);
   font-size: 0.82rem;
   font-weight: 500;
-  padding: 0.35rem 0.9rem;
+  padding: 0.4rem 1rem;
   border-radius: var(--radius-full);
   transition: background var(--dur-fast) ease,
-              border-color var(--dur-fast) ease,
-              color var(--dur-fast) ease;
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    transform var(--dur-fast) ease;
   cursor: default;
 }
 
@@ -97,9 +116,11 @@
   background: var(--clr-accent-glow);
   border-color: var(--clr-accent);
   color: var(--clr-accent);
+  transform: translateY(-2px);
 }
 
-@media (max-width: 768px) {
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
   .skills-stack {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -109,5 +130,22 @@
   .skills-stack {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-md);
+  }
+
+  .stack-card {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .stack-icon {
+    font-size: 2rem;
+  }
+
+  .stack-name {
+    font-size: 0.82rem;
+  }
+
+  .skill-tag {
+    font-size: 0.76rem;
+    padding: 0.32rem 0.8rem;
   }
 }

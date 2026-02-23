@@ -2,18 +2,19 @@
 .footer {
   background: var(--clr-bg);
   border-top: 1px solid var(--clr-border);
-  padding: var(--space-xl) var(--space-2xl);
+  padding: var(--space-xl) clamp(1.5rem, 4vw, 3rem);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   flex-wrap: wrap;
   gap: var(--space-md);
 }
 
 .footer-left {
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--clr-text-muted);
-  margin-left: 700px;
+  text-align: center;
+  line-height: 1.6;
 }
 
 .footer-left a {
@@ -43,10 +44,15 @@
   color: var(--clr-text);
 }
 
+/* ─── RESPONSIVE ─── */
 @media (max-width: 480px) {
   .footer {
     flex-direction: column;
     text-align: center;
-    padding: var(--space-lg);
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .footer-left {
+    font-size: 0.78rem;
   }
 }
