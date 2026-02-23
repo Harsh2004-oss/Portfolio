@@ -274,36 +274,20 @@ def get_certificates():
         for c in certs
     ]
 @app.get("/certificates/view/{cert_id}")
-async def view_certificate(cert_id: str):
+def view_certificate(cert_id: str):
     cert = certificate_collection.find_one({"_id": ObjectId(cert_id)})
     if not cert or not cert.get("file_url"):
         raise HTTPException(status_code=404, detail="Certificate not found")
 
     file_url = cert["file_url"]
     filename = cert["title"]
+    
+    # Force inline display in browser using Cloudinary query param
+    # Cloudinary supports ?response-content-disposition=inline
+    if file_url.lower().endswith(".pdf"):
+        file_url += "?response-content-disposition=inline"
 
-    async with httpx.AsyncClient() as client:
-        r = await client.get(file_url)
-        if r.status_code != 200:
-            raise HTTPException(status_code=404, detail="File not found on Cloudinary")
-
-        url_lower = file_url.lower()
-        if url_lower.endswith(".pdf"):
-            media_type = "application/pdf"
-            if not filename.lower().endswith(".pdf"):
-                filename += ".pdf"  # Ensure browser sees it as PDF
-        elif url_lower.endswith((".jpg", ".jpeg")):
-            media_type = "image/jpeg"
-        elif url_lower.endswith(".png"):
-            media_type = "image/png"
-        else:
-            media_type = "application/octet-stream"
-
-        return StreamingResponse(
-            iter([r.content]),
-            media_type=media_type,
-            headers={"Content-Disposition": f"inline; filename=\"{filename}\""}
-        )
+    return RedirectResponse(url=file_url)
 # ==========================================================
 # 🚀 PROJECTS
 # ==========================================================
