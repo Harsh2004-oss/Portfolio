@@ -173,25 +173,32 @@ def get_resume():
         "file_url": resume.get("file_url"),
         "content": resume.get("content", "")
     }
-
 @app.get("/resume/view")
-def view_resume():
-    resume = resume_collection.find_one(sort=[("_id", -1)])
-    if not resume or not resume.get("file_url"):
-        raise HTTPException(status_code=404, detail="No resume found")
-
-    return RedirectResponse(
-        url=resume["file_url"] + "?response-content-disposition=inline"
+async def view_resume():
+    url = cloudinary.CloudinaryImage(
+        "portfolio/resumes/Harsh_Aerndolkar_Resume"
+    ).build_url(
+        resource_type="raw",
+        secure=True
     )
 
+    # Force inline display
+    return RedirectResponse(
+        url + "?response-content-disposition=inline",
+        status_code=302
+    )
 @app.get("/resume/download")
-def download_resume():
-    resume = resume_collection.find_one(sort=[("_id", -1)])
-    if not resume or not resume.get("file_url"):
-        raise HTTPException(status_code=404, detail="No resume found")
+async def download_resume():
+    url = cloudinary.CloudinaryImage(
+        "portfolio/resumes/Harsh_Aerndolkar_Resume"
+    ).build_url(
+        resource_type="raw",
+        secure=True
+    )
 
     return RedirectResponse(
-        url=resume["file_url"] + "?fl_attachment=true"
+        url + "?response-content-disposition=attachment",
+        status_code=302
     )
 # ==========================================================
 # 📑 SUMMARY UPLOAD
